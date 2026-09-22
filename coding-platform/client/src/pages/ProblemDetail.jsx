@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import Editor from "@monaco-editor/react";
 import api from "../api";
 
-const MONACO_LANG = { javascript: "javascript", python: "python" };
+const MONACO_LANG = { javascript: "javascript", python: "python", c: "c", cpp: "cpp", java: "java" };
 
 export default function ProblemDetail() {
   const { slug } = useParams();
@@ -102,9 +102,13 @@ export default function ProblemDetail() {
         <div className="card">
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
             <select value={language} onChange={(e) => handleLanguageChange(e.target.value)}>
-              <option value="javascript">JavaScript</option>
+                           <option value="javascript">JavaScript</option>
               <option value="python">Python</option>
+              <option value="c">C</option>
+              <option value="cpp">C++</option>
+              <option value="java">Java</option>
             </select>
+            
             <div style={{ display: "flex", gap: 8 }}>
               <button className="secondary" onClick={runCode} disabled={busy}>
                 {busyAction === "run" ? "Running..." : "▶ Run (sample)"}

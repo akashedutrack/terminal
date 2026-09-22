@@ -58,4 +58,36 @@ CREATE INDEX IF NOT EXISTS idx_submissions_user ON submissions(user_id);
 CREATE INDEX IF NOT EXISTS idx_submissions_problem ON submissions(problem_id);
 `);
 
+// --- Migrations: added after initial release. Idempotent (safe to re-run). ---
+function columnExists(table, column) {
+  return db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column);
+}
+
+// C / C++ / Java starter code columns for problems
+for (const col of ["starter_c", "starter_cpp", "starter_java"]) {
+  if (!columnExists("problems", col)) {
+    db.exec(`ALTER TABLE problems ADD COLUMN ${col} TEXT DEFAULT ''`);
+  }
+}
+
+// Contest mode
+db.exec(`
+CREATE TABLE IF NOT EXISTS contests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  slug TEXT UNIQUE NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT DEFAULT '',
+  start_time TEXT NOT NULL,
+  end_time TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS contest_problems (
+  contest_id INTEGER NOT NULL REFERENCES contests(id) ON DELETE CASCADE,
+  problem_id INTEGER NOT NULL REFERENCES problems(id) ON DELETE CASCADE,
+  points INTEGER NOT NULL,
+  PRIMARY KEY (contest_id, problem_id)
+);
+`);
+
 export default db;

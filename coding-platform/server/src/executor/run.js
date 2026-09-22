@@ -3,21 +3,44 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 
-/**
- * NOTE ON SECURITY:
- * This runs user-submitted code with the same OS-level privileges as the
- * server process, isolated only by a per-run temp directory and a wall-clock
- * timeout. Fine for local dev/learning use, not safe for public untrusted
- * traffic. For production, run each submission in an isolated container.
- */
-
 const LANGUAGES = {
-  javascript: { ext: "js", build: (file) => ({ cmd: "node", args: [file] }) },
-  python: { ext: "py", build: (file) => ({ cmd: "python3", args: [file] }) },
+  javascript: {
+    filename: "main.js",
+    run: (file) => ({ cmd: "node", args: [file] }),
+  },
+  python: {
+    filename: "main.py",
+    run: (file) => ({ cmd: "python3", args: [file] }),
+  },
+  c: {
+    filename: "main.c",
+    compile: (file, workDir) => ({
+      cmd: "gcc",
+      args: [file, "-O2", "-o", path.join(workDir, "a.out")],
+    }),
+    run: (file, workDir) => ({ cmd: path.join(workDir, "a.out"), args: [] }),
+  },
+  cpp: {
+    filename: "main.cpp",
+    compile: (file, workDir) => ({
+      cmd: "g++",
+      args: [file, "-O2", "-std=c++17", "-o", path.join(workDir, "a.out")],
+    }),
+    run: (file, workDir) => ({ cmd: path.join(workDir, "a.out"), args: [] }),
+  },
+  java: {
+    filename: "Main.java",
+    compile: (file, workDir) => ({ cmd: "javac", args: [file] }),
+    run: (file, workDir) => ({ cmd: "java", args: ["-cp", workDir, "Main"] }),
+  },
 };
 
 export function isSupportedLanguage(lang) {
   return Object.prototype.hasOwnProperty.call(LANGUAGES, lang);
+}
+
+export function supportedLanguages() {
+  return Object.keys(LANGUAGES);
 }
 
 function runOnce(cmd, args, input, timeoutMs) {
@@ -38,7 +61,9 @@ function runOnce(cmd, args, input, timeoutMs) {
       stdout += d.toString();
       if (stdout.length > 200000) child.kill("SIGKILL");
     });
-    child.stderr.on("data", (d) => { stderr += d.toString(); });
+    child.stderr.on("data", (d) => {
+      stderr += d.toString();
+    });
 
     child.on("error", (err) => {
       clearTimeout(timer);
@@ -55,19 +80,34 @@ function runOnce(cmd, args, input, timeoutMs) {
   });
 }
 
-export async function runSubmission({ language, code, testCases, timeLimitMs = 3000 }) {
+export async function runSubmission({ language, code, testCases, timeLimitMs = 3000, compileTimeoutMs = 10000 }) {
   if (!isSupportedLanguage(language)) throw new Error(`Unsupported language: ${language}`);
   const lang = LANGUAGES[language];
   const workDir = fs.mkdtempSync(path.join(os.tmpdir(), "sub-"));
-  const file = path.join(workDir, `main.${lang.ext}`);
+  const file = path.join(workDir, lang.filename);
   fs.writeFileSync(file, code, "utf8");
 
-  const results = [];
-  let totalRuntime = 0;
-
   try {
+    if (lang.compile) {
+      const { cmd, args } = lang.compile(file, workDir);
+      const compileResult = await runOnce(cmd, args, "", compileTimeoutMs);
+      if (compileResult.exitCode !== 0) {
+        return {
+          overallStatus: "Compilation Error",
+          passedCount: 0,
+          totalCount: testCases.length,
+          runtimeMs: compileResult.runtimeMs,
+          compileError: compileResult.stderr.slice(0, 4000) || compileResult.stdout.slice(0, 4000),
+          results: [],
+        };
+      }
+    }
+
+    const results = [];
+    let totalRuntime = 0;
+
     for (const tc of testCases) {
-      const { cmd, args } = lang.build(file);
+      const { cmd, args } = lang.run(file, workDir);
       const r = await runOnce(cmd, args, tc.input, timeLimitMs);
       totalRuntime += r.runtimeMs;
 
@@ -81,19 +121,28 @@ export async function runSubmission({ language, code, testCases, timeLimitMs = 3
       else status = "Wrong Answer";
 
       results.push({
-        input: tc.input, expected, actual,
-        stderr: r.stderr.slice(0, 2000), status, runtimeMs: r.runtimeMs,
+        input: tc.input,
+        expected,
+        actual,
+        stderr: r.stderr.slice(0, 2000),
+        status,
+        runtimeMs: r.runtimeMs,
         isSample: !!tc.is_sample,
       });
     }
+
+    const passedCount = results.filter((r) => r.status === "Passed").length;
+    const overallStatus =
+      passedCount === results.length
+        ? "Accepted"
+        : results.some((r) => r.status === "Time Limit Exceeded")
+        ? "Time Limit Exceeded"
+        : results.some((r) => r.status === "Runtime Error")
+        ? "Runtime Error"
+        : "Wrong Answer";
+
+    return { overallStatus, passedCount, totalCount: results.length, runtimeMs: totalRuntime, results };
   } finally {
     fs.rmSync(workDir, { recursive: true, force: true });
   }
-
-  const passedCount = results.filter((r) => r.status === "Passed").length;
-  const overallStatus =
-    passedCount === results.length ? "Accepted" :
-    results.some((r) => r.status === "Time Limit Exceeded") ? "Time Limit Exceeded" : "Wrong Answer";
-
-  return { overallStatus, passedCount, totalCount: results.length, runtimeMs: totalRuntime, results };
 }

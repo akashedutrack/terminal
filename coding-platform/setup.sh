@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 set -e
+echo "Installing C/C++ compilers..."
+sudo apt-get update
+sudo apt-get install -y build-essential
+
 echo "Installing server dependencies..."
 cd server && npm install
 echo "Seeding database..."

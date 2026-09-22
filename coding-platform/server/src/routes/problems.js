@@ -31,7 +31,13 @@ router.get("/:slug", requireAuth, (req, res) => {
   res.json({
     id: problem.id, slug: problem.slug, title: problem.title, difficulty: problem.difficulty,
     points: problem.points, description: problem.description,
-    starterCode: { javascript: problem.starter_js, python: problem.starter_py },
+    starterCode: {
+      javascript: problem.starter_js,
+      python: problem.starter_py,
+      c: problem.starter_c,
+      cpp: problem.starter_cpp,
+      java: problem.starter_java,
+    },
     sampleTests: samples, lastSubmission: lastSubmission || null,
   });
 });
