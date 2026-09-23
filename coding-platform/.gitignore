@@ -6,3 +6,10 @@ server/data/*.db-*
 .env
 *.log
 .DS_Store
+
+# build artifacts
+client/dist/
+node_modules/
+
+# runtime data
+server/data/
