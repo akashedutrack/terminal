@@ -7,6 +7,7 @@ import problemsRoutes from "./routes/problems.js";
 import submissionsRoutes from "./routes/submissions.js";
 import leaderboardRoutes from "./routes/leaderboard.js";
 import analyticsRoutes from "./routes/analytics.js";
+import contestsRoutes from "./routes/contests.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -22,6 +23,7 @@ app.use("/api/problems", problemsRoutes);
 app.use("/api/submissions", submissionsRoutes);
 app.use("/api/leaderboard", leaderboardRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/contests", contestsRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err);

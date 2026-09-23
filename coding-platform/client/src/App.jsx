@@ -8,6 +8,8 @@ import Problems from "./pages/Problems";
 import ProblemDetail from "./pages/ProblemDetail";
 import Leaderboard from "./pages/Leaderboard";
 import Dashboard from "./pages/Dashboard";
+import Contests from "./pages/Contests";
+import ContestDetail from "./pages/ContestDetail";
 
 export default function App() {
   return (
@@ -22,6 +24,8 @@ export default function App() {
           <Route path="/problems/:slug" element={<ProtectedRoute><ProblemDetail /></ProtectedRoute>} />
           <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/contests" element={<ProtectedRoute><Contests /></ProtectedRoute>} />
+          <Route path="/contests/:slug" element={<ProtectedRoute><ContestDetail /></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
