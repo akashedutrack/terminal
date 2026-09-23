@@ -4,12 +4,22 @@ import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 
+import db from "./db.js";
 import authRoutes from "./routes/auth.js";
 import problemsRoutes from "./routes/problems.js";
 import submissionsRoutes from "./routes/submissions.js";
 import leaderboardRoutes from "./routes/leaderboard.js";
 import analyticsRoutes from "./routes/analytics.js";
 import contestsRoutes from "./routes/contests.js";
+
+// Self-seed on boot if the database is empty. Safe to run every startup:
+// it only does anything the first time (or after data is wiped, e.g. a
+// free-tier restart with no persistent disk attached).
+const problemCount = db.prepare("SELECT COUNT(*) c FROM problems").get().c;
+if (problemCount === 0) {
+  console.log("No problems found in database — running seed automatically...");
+  await import("./seed.js");
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -28,7 +38,6 @@ app.use("/api/leaderboard", leaderboardRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/contests", contestsRoutes);
 
-// In production, serve the built React app for every non-API route.
 if (process.env.NODE_ENV === "production") {
   const clientDist = path.join(__dirname, "..", "..", "client", "dist");
   app.use(express.static(clientDist));
